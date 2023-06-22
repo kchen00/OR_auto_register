@@ -171,12 +171,16 @@ def register_brute_force(frequency, minute):
     for i in range(frequency):
         with open('failed_subject.json', 'r') as file:
             failed_subject = json.load(file)
-        print(f"Trying to register full section, attempt {n} of {frequency}")
-        register(failed_subject)
         
-        if i < frequency - 1:
-            time.sleep(interval)
-            n += 1
+        if len(failed_subject) > 0:
+            print(f"Trying to register full section, attempt {n} of {frequency}")
+            register(failed_subject)
+
+            if i < frequency - 1:
+                time.sleep(interval)
+                n += 1
+        else:
+            break
 
 #login to the OR system
 login(login_payload)
