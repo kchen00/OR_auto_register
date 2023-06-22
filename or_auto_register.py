@@ -2,6 +2,7 @@ import requests
 import csv
 import json
 from bs4 import BeautifulSoup
+import time
 
 # Create a session
 session = requests.Session()
@@ -25,20 +26,29 @@ login_payload = {
     "commit": ""
 }
 
-subject_to_take = {}
-failed_register = {}
+sem_1_register_url = "https://or.ump.edu.my/or/CurrentSemester/action/add_subject.jsp"
+sem_2_register_url = "https://or.ump.edu.my/or/NextSemester/action/add_subject.jsp"
+
+# url for page
+register_url = [
+    sem_1_register_url,
+    sem_2_register_url
+]
 
 # reading the csv files to register
-with open("subject_to_take.csv", "r") as f:
-    reader = csv.DictReader(f)
-    for row in reader:
-        subject_to_take[row["subject_code"]] = {
-            "sem": int(row["sem"]),
-            "subject_code": row["subject_code"],
-            "lect_group": row["lect_group"],
-            "tut_group": row["tut_group"],
-            "repeat_subj": ""
-        }
+def read_subject_to_take():
+    subject_to_take = {}
+    with open("subject_to_take.csv", "r") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            subject_to_take[row["subject_code"]] = {
+                "sem": int(row["sem"]),
+                "subject_code": row["subject_code"],
+                "lect_group": row["lect_group"],
+                "tut_group": row["tut_group"],
+                "repeat_subj": ""
+            }
+    return subject_to_take
 
 # Create a session
 session = requests.Session()
@@ -49,6 +59,11 @@ def print_json(input):
     json_str = json.dumps(input, indent=4)
     # Print the JSON string
     print(json_str)
+
+# a method to save subject that failed register as json
+def save_json(failed_subject):
+    with open('failed_subject.json', 'w') as file:
+        json.dump(failed_subject, file)
 
 # method to write response.text as html files
 def write_html(file_name, response):
@@ -82,6 +97,7 @@ def navigate_to_sem(sem):
 
 # pre testing the input to make sure it is correct and working properly
 def test():
+    subject_to_take = read_subject_to_take()
     print_json(subject_to_take)
 
     if login(login_payload) == 200:
@@ -98,30 +114,27 @@ def test():
     else:
         print("Login failed, please check your matric id and password")
 
-def register():
-    
+# a method to create payload
+def create_payload(subject):
+    payload = {
+        "subject_code": subject["subject_code"],
+        "lect_group": subject["lect_group"],
+        "tut_group": subject["tut_group"],
+        "repeat_subj": ""
+    }
+
+    return payload
+
+def register(subject_to_register):
+    failed_subject = {}
     #login to the OR system
     login(login_payload)
 
-    sem_1_register_url = "https://or.ump.edu.my/or/CurrentSemester/action/add_subject.jsp"
-    sem_2_register_url = "https://or.ump.edu.my/or/NextSemester/action/add_subject.jsp"
-
-    # url for page
-    register_url = [
-        sem_1_register_url,
-        sem_2_register_url
-    ]
-    
-    for subject in subject_to_take:    
-        payload = {
-            "subject_code": subject_to_take[subject]["subject_code"],
-            "lect_group": subject_to_take[subject]["lect_group"],
-            "tut_group": subject_to_take[subject]["tut_group"],
-            "repeat_subj": ""
-        }
+    for subject in subject_to_register:    
+        payload = create_payload(subject_to_register[subject])
 
         # auto switching which sem to register
-        sem = subject_to_take[subject]["sem"]
+        sem = subject_to_register[subject]["sem"]
         navigate_to_sem(sem)
         register = session.post(register_url[sem-1], data=payload)
 
@@ -135,14 +148,39 @@ def register():
         print(div_text)
 
         # check if the error is due to section full already
-        if "already full" in div_text:
-            failed_register[subject_to_take[subject]["subject_code"]] = payload
-    
-    print_json(failed_register)
+        if "already full" in div_text.lower():
+            failed_subject[subject_to_register[subject]["subject_code"]] = subject_to_register[subject]
+        elif "saving" in div_text.lower():
+            print("Sucessfully registered " + subject_to_register[subject]["subject_code"])
+
+    print("")
+    if len(failed_subject) > 0:
+        save_json(failed_subject)
+
+# a method to keep on trying to register a subject until someone letgo 
+def register_brute_force(frequency, minute):
+    failed_subject = {}
+    # run x times in 10 minutes
+    interval = minute * 60 / frequency
+    n = 1
+    for i in range(frequency):
+        with open('failed_subject.json', 'r') as file:
+            failed_subject = json.load(file)
+        print(f"Trying to register full section, attempt {n} of {frequency}")
+        time.sleep(interval)
+        register(failed_subject)
+        n += 1
+
+
+# test your input
+# test()
 
 # uncomment register() to run the code
-# test()
-register()
+subject_to_take = read_subject_to_take()
+# register(subject_to_take)
+
+# retry register, specify the frequency in how many times to retry in 10 minutes
+register_brute_force(10, 10)
 
 # Clear cookies and session-related data
 session.cookies.clear()
