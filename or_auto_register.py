@@ -80,7 +80,14 @@ def login(credential):
     write_html("login_test.html", login)
 
     return login.status_code
-    
+
+def destroy_session():
+    # Clear cookies and session-related data
+    session.cookies.clear()
+    # Close the session to end the session
+    session.close()
+
+
 def navigate_to_sem(sem):
     if sem == 1:
         # navigation test 
@@ -127,8 +134,6 @@ def create_payload(subject):
 
 def register(subject_to_register):
     failed_subject = {}
-    #login to the OR system
-    login(login_payload)
 
     for subject in subject_to_register:    
         payload = create_payload(subject_to_register[subject])
@@ -167,10 +172,14 @@ def register_brute_force(frequency, minute):
         with open('failed_subject.json', 'r') as file:
             failed_subject = json.load(file)
         print(f"Trying to register full section, attempt {n} of {frequency}")
-        time.sleep(interval)
         register(failed_subject)
-        n += 1
+        
+        if i < frequency - 1:
+            time.sleep(interval)
+            n += 1
 
+#login to the OR system
+login(login_payload)
 
 # test your input
 # test()
@@ -182,7 +191,4 @@ subject_to_take = read_subject_to_take()
 # retry register, specify the frequency in how many times to retry in 10 minutes
 register_brute_force(10, 10)
 
-# Clear cookies and session-related data
-session.cookies.clear()
-# Close the session to end the session
-session.close()
+destroy_session()
