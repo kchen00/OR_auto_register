@@ -56,38 +56,62 @@ def write_html(file_name, response):
         f.write(response.text)
         f.close()
 
+# method to login
+def login(credential):
+    # login into OR system
+    login_page_url = "https://or.ump.edu.my/or/LoginCheck.jsp"
+    #logging into the or 
+    login = session.post(login_page_url, data=credential)
+    write_html("login_test.html", login)
+
+    return login.status_code
+    
+def navigate_to_sem(sem):
+    if sem == 1:
+        # navigation test 
+        sem_1_url = "https://or.ump.edu.my/or/main.jsp?action=CurrentSemester"
+        sem_1 = session.get(sem_1_url)
+        write_html("sem_1_page.html", sem_1)
+        return sem_1.status_code
+
+    elif sem == 2:
+        sem_2_url = "https://or.ump.edu.my/or/main.jsp?action=NextSemester"
+        sem_2 = session.get(sem_2_url)
+        write_html("sem_2_page.html", sem_2)
+        return sem_2.status_code
+
 # pre testing the input to make sure it is correct and working properly
 def test():
     print_json(subject_to_take)
 
-    # login into OR system
-    login_page_url = "https://or.ump.edu.my/or/LoginCheck.jsp"
-    #logging into the or 
-    login = session.post(login_page_url, data=login_payload)
-    write_html("login_test.html", login)
-    
-    # navigation test 
-    sem_1_url = "https://or.ump.edu.my/or/main.jsp?action=CurrentSemester"
-    sem_1 = session.get(sem_1_url)
-    write_html("sem_1_page.html", sem_1)
-
-    sem_2_url = "https://or.ump.edu.my/or/main.jsp?action=NextSemester"
-    sem_2 = session.get(sem_2_url)
-    write_html("sem_2_page.html", sem_2)
-
+    if login(login_payload) == 200:
+        print("login is sucessful")
+        if navigate_to_sem(1) == 200:
+            print("navigation to sem 1 page is successful")
+        else:
+             print("navigation to sem 1 page failed")
+        
+        if navigate_to_sem(2) == 200:
+            print("navigation to sem 2 page is successful")
+        else:
+             print("navigation to sem 2 page failed")
+    else:
+        print("Login failed, please check your matric id and password")
 
 def register():
-    # login into OR system
-    login_page_url = "https://or.ump.edu.my/or/LoginCheck.jsp"
-    #logging into the or 
-    login = session.post(login_page_url, data=login_payload)
+    
+    #login to the OR system
+    login(login_payload)
 
-    # url for page
-    sem_1_url = "https://or.ump.edu.my/or/main.jsp?action=CurrentSemester"
     sem_1_register_url = "https://or.ump.edu.my/or/CurrentSemester/action/add_subject.jsp"
-    sem_2_url = "https://or.ump.edu.my/or/main.jsp?action=NextSemester"
     sem_2_register_url = "https://or.ump.edu.my/or/NextSemester/action/add_subject.jsp"
 
+    # url for page
+    register_url = [
+        sem_1_register_url,
+        sem_2_register_url
+    ]
+    
     for subject in subject_to_take:    
         payload = {
             "subject_code": subject_to_take[subject]["subject_code"],
@@ -96,13 +120,10 @@ def register():
             "repeat_subj": ""
         }
 
-        # check which sem is the subject
-        if subject_to_take[subject]["sem"] == 1:
-            session.get(sem_1_url)
-            register = session.post(sem_1_register_url, data=payload)
-        elif subject_to_take[subject]["sem"] == 2:
-            session.get(sem_2_url)
-            register = session.post(sem_2_register_url, data=payload)
+        # auto switching which sem to register
+        sem = subject_to_take[subject]["sem"]
+        navigate_to_sem(sem)
+        register = session.post(register_url[sem-1], data=payload)
 
         # extracting the error message when register failed
         soup = BeautifulSoup(register.content, 'html.parser')
@@ -114,13 +135,14 @@ def register():
         print(div_text)
 
         # check if the error is due to section full already
-        if "The section/group is already full" in div_text:
+        if "already full" in div_text:
             failed_register[subject_to_take[subject]["subject_code"]] = payload
+    
+    print_json(failed_register)
 
 # uncomment register() to run the code
 # test()
-# register()
-# print_json(failed_register)
+register()
 
 # Clear cookies and session-related data
 session.cookies.clear()

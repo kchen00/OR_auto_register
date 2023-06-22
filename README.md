@@ -4,7 +4,7 @@ I will not guarantee the successful of registering a subject.
 I will not responsible if you failed to register a subject
 
 ## Setting up
-Run pip install -r requirements.txt
+Run `pip install -r requirements.txt`
 
 ## Preparing Your Information
 ### Preparing your login information
@@ -28,7 +28,7 @@ refer `subject_to_take_example.csv` for more example
 
 ## Testing before executing the code
 ### Testing Your Information
-Run the test() function to check your information.
+Run the `test()` function to check your information.
 Check the terminal output, make sure it is correct.
 If not go back and change the CSV file again.
 
