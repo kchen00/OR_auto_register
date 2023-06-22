@@ -6,9 +6,22 @@ from bs4 import BeautifulSoup
 # Create a session
 session = requests.Session()
 
+matric_id = None
+password = None
+
+# reading credential from files
+with open("credential.txt", "r") as f:
+    credentials = f.read()
+    lines = credentials.split("\n")
+    for line in lines:
+        if line.startswith('MATRICID='):
+            matric_id = line.split('=')[1].strip()
+        elif line.startswith('PASSWORD='):
+            password = line.split('=')[1].strip()
+
 login_payload = {
-    "txtUsername": "YOURMATRICID",
-    "txtPassword": "YOURPASSWORD",
+    "txtUsername": matric_id,
+    "txtPassword": password,
     "commit": ""
 }
 
@@ -105,9 +118,9 @@ def register():
             failed_register[subject_to_take[subject]["subject_code"]] = payload
 
 # uncomment register() to run the code
-test()
+# test()
 # register()
-print_json(failed_register)
+# print_json(failed_register)
 
 # Clear cookies and session-related data
 session.cookies.clear()
